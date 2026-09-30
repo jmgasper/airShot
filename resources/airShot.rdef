@@ -1,0 +1,22 @@
+resource app_signature "application/x-vnd.airOS-airShot";
+resource app_flags B_SINGLE_LAUNCH | B_ARGV_ONLY;
+resource vector_icon {
+	import "branding/airshot-icon.hvif"
+};
+resource app_version {
+	major = 0,
+	middle = 1,
+	minor = 0,
+	variety = B_APPV_BETA,
+	internal = 0,
+	short_info = "airShot 0.1.0 — screenshots and markup",
+	long_info = "A screenshot and markup tool for air/OS and Haiku: capture the screen, a window or a region with a shortcut, then annotate."
+};
+resource file_types message {
+	"types" = "image/png",
+	"types" = "image/jpeg",
+	"types" = "image/bmp",
+	"types" = "image/gif",
+	"types" = "image/tiff",
+	"types" = "image/webp"
+};

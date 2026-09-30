@@ -1,0 +1,85 @@
+# airShot
+
+A screenshot and markup tool for air/OS and Haiku, in the spirit of Shottr and
+Flameshot.
+
+- **Three ways to capture**, each on its own keyboard shortcut that works while
+  airShot runs in the background: the full screen, a window (highlighted with an
+  animated frame as you point at it) or a region you drag out and adjust.
+- **An editor for markup**: arrows, lines, rectangles, ellipses, a freehand
+  pen, a highlighter, text, numbered markers, blur/pixelate and crop, with
+  undo/redo, a colour palette and zoom.
+- **Fast output**: save as PNG into a folder of your choice with a time-stamped
+  name, or copy to the clipboard; desktop notifications confirm both.
+- **Haiku native**: an `input_server` add-on provides the global shortcuts, a
+  Deskbar tray icon offers the capture modes, and the app also opens image
+  files for annotation ("Open with…").
+
+## Default shortcuts
+
+| Action        | Shortcut             |
+|---------------|----------------------|
+| Full screen   | `Print Screen`       |
+| Window        | `Shift+Print Screen` |
+| Region        | `Ctrl+Print Screen`  |
+
+Change them in *Settings…* (click a shortcut, press the new keys; Backspace
+clears it). The shortcuts replace Haiku's built-in Print Screen handling while
+the add-on is installed.
+
+## Using the overlay
+
+- **Window mode**: move the mouse over a window and click. Dragging instead
+  selects a region.
+- **Region mode**: drag out a rectangle. Click a window without dragging to use
+  its frame. Adjust with the handles, move by dragging inside, nudge with the
+  arrow keys (Shift for 10 px), then press `Enter`, double-click, or click
+  *Capture*. `Esc` cancels.
+
+## The editor
+
+| Key | Tool        | Key | Tool         |
+|-----|-------------|-----|--------------|
+| V   | Select/move | H   | Highlighter  |
+| A   | Arrow       | T   | Text         |
+| L   | Line        | N   | Counter      |
+| R   | Rectangle   | B   | Blur         |
+| E   | Ellipse     | C   | Crop         |
+| P   | Pen         |     |              |
+
+`Alt+S` saves (to the configured folder, or the file it was saved to before),
+`Shift+Alt+S` saves elsewhere, `Alt+C` copies the image, `Alt+Z`/`Shift+Alt+Z`
+undo/redo, `Delete` removes the selected annotation, `Alt` + mouse wheel zooms.
+Text: `Enter` finishes, `Shift+Enter` starts a new line, `Esc` discards.
+
+## Command line
+
+```
+airShot --full | --window | --region | --settings
+airShot picture.png        # open an image in the editor
+```
+
+## Building
+
+airShot builds on Haiku with the bundled development tools:
+
+```
+make            # build-haiku/airShot and the input_server filter
+make package    # artifacts/airshot-<version>-x86_64.hpkg
+```
+
+Install the package with `pkgman install artifacts/airshot-*.hpkg`; the
+`input_server` loads the shortcut filter as soon as the package is activated.
+Bump the version in `resources/airShot.PackageInfo` before reinstalling.
+
+On Linux, `make BUILD=build-host check-host` runs the platform independent
+tests. `tools/sync-build.sh` syncs the tree to the test workstation and builds
+there; `tools/install-dev.sh --run` installs the filter into
+`~/config/non-packaged` and starts the app without a package.
+
+See `docs/DESIGN.md` for how the pieces fit together and `docs/TESTING.md` for
+the testing setup.
+
+## Licence
+
+MIT, see `LICENSE`.

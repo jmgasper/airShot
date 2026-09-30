@@ -1,0 +1,8 @@
+build-haiku/
+build-host/
+artifacts/
+__pycache__/
+*.o
+*.d
+*.rsrc
+.vm/
