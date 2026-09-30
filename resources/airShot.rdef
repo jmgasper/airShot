@@ -1,5 +1,5 @@
 resource app_signature "application/x-vnd.airOS-airShot";
-resource app_flags B_SINGLE_LAUNCH | B_ARGV_ONLY;
+resource app_flags B_SINGLE_LAUNCH;
 resource vector_icon {
 	import "branding/airshot-icon.hvif"
 };

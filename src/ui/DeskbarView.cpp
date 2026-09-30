@@ -114,7 +114,7 @@ void DeskbarView::_Init()
 
 BArchivable* DeskbarView::Instantiate(BMessage* archive)
 {
-	if (!validate_instantiation(archive, "DeskbarView"))
+	if (!validate_instantiation(archive, "airshot::DeskbarView"))
 		return NULL;
 	return new DeskbarView(archive);
 }
@@ -126,7 +126,7 @@ status_t DeskbarView::Archive(BMessage* archive, bool deep) const
 	if (status == B_OK)
 		status = archive->AddString("add_on", kAppSignature);
 	if (status == B_OK)
-		status = archive->AddString("class", "DeskbarView");
+		status = archive->AddString("class", "airshot::DeskbarView");
 	return status;
 }
 

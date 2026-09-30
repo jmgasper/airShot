@@ -48,7 +48,7 @@ OverlayWindow::OverlayWindow(const BBitmap* screen, const std::vector<WindowEntr
 	:
 	BWindow(BScreen().Frame(), "airShot overlay", kWindowScreenWindow,
 		B_NOT_RESIZABLE | B_NOT_CLOSABLE | B_NOT_ZOOMABLE | B_NOT_MOVABLE
-			| B_NOT_MINIMIZABLE | B_AVOID_FRONT),
+			| B_NOT_MINIMIZABLE),
 	fTarget(target),
 	fFinished(false)
 {
