@@ -33,6 +33,16 @@ constexpr uint32 kMsgSyncDeskbar = 'SyDb';
 // read back.
 constexpr bigtime_t kHideSettleTime = 250000;
 
+
+void TraceCapture(const char* stage)
+{
+	if (getenv("AIRSHOT_TRACE") != NULL) {
+		fprintf(stderr, "airShot capture %lld ms: %s\n",
+			(long long)(system_time() / 1000), stage);
+	}
+}
+
+
 }  // namespace
 
 
@@ -237,9 +247,11 @@ void App::_StartCapture(CaptureKind kind)
 {
 	if (fCapturing)
 		return;
+	TraceCapture("requested");
 	fCapturing = true;
 	fPendingKind = kind;
 	_HideOwnWindows();
+	TraceCapture("own windows hidden");
 	bigtime_t delay = kHideSettleTime + (bigtime_t)fSettings.delaySeconds * 1000000;
 	delete fDelayRunner;
 	BMessage now(kMsgCaptureNow);
@@ -249,10 +261,12 @@ void App::_StartCapture(CaptureKind kind)
 
 void App::_CaptureNow()
 {
+	TraceCapture("grabbing screen");
 	delete fDelayRunner;
 	fDelayRunner = NULL;
 	delete fScreen;
 	fScreen = ScreenCapture::GrabScreen(fSettings.includeCursor);
+	TraceCapture("screen grabbed");
 	if (fScreen == NULL) {
 		fCapturing = false;
 		(new BAlert("Capture failed", "airShot could not read the screen.", "OK", NULL, NULL,
@@ -267,9 +281,12 @@ void App::_CaptureNow()
 	}
 	std::vector<WindowEntry> windows;
 	ScreenCapture::ListWindows(windows, Team());
+	TraceCapture("windows listed");
 	OverlayWindow* overlay = new OverlayWindow(fScreen, windows, fPendingKind,
 		fSettings.animateSelection, fSettings.includeDecorations, BMessenger(this));
+	TraceCapture("overlay constructed");
 	overlay->Show();
+	TraceCapture("overlay shown");
 }
 
 

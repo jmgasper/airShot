@@ -49,6 +49,29 @@ tests short.
 `make BUILD=build-host check-host` on Linux (or `make check` on Haiku) runs
 `tests/HotKeyTests.cpp`: shortcut matching, labels and key names.
 
+## Capture startup timing
+
+Run airShot with `AIRSHOT_TRACE=1` to log monotonic timestamps for the capture
+request, hiding its windows, screen readback, window enumeration and showing
+the overlay. Compare `requested` with `overlay shown` with the capture delay
+set to zero. The 250 ms window-settle delay and the 150 ms cursor-hide delay
+are intentional; a multi-second gap at `grabbing screen` is in screen readback.
+
+`make capture-timing` builds a native probe using the same `GrabScreen` path.
+Run `build-haiku/capture_timing` to measure six captures, alternating cursor
+inclusion, and validate their dimensions. An optional limit in milliseconds
+turns it into a performance regression check, for example
+`build-haiku/capture_timing 1000` on X399. The limit is machine-dependent and
+is deliberately separate from the portable unit tests.
+
+Issue #1 was traced to `DrawingEngine::ReadBitmap` in X399's Haiku fork: at
+200% display density it read the 7680x2160 GPU front buffer before downsampling
+to 3840x1080. The fix belongs in Haiku's app_server: use the drawing buffer in
+RAM at non-native density, where direct windows are disconnected and the
+drawing buffer holds the complete desktop. At native density the front
+buffer remains necessary to include direct-window rendering. Updating airShot
+alone does not fix this OS bottleneck.
+
 ## Manual checklist
 
 1. Print Screen with nothing running: airShot starts and opens the editor

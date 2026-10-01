@@ -30,7 +30,7 @@ FILTER_OBJ = $(FILTER_SRC:%.cpp=$(BUILD)/filter/%.o)
 FILTER_CPPFLAGS = -I/boot/system/develop/headers/private/storage
 FILTER_LIBS = -lbe
 
-.PHONY: all app filter package clean icon check check-host
+.PHONY: all app filter package clean icon capture-timing check check-host
 
 all: $(BUILD)/airShot $(BUILD)/airShot_filter
 app: $(BUILD)/airShot
@@ -67,6 +67,11 @@ check-host: check
 
 icon:
 	python3 tools/make-icon.py resources/branding/airshot-icon.hvif resources/branding/airshot-icon-preview.png
+
+$(BUILD)/capture_timing: tests/CaptureTiming.cpp $(BUILD)/src/capture/ScreenCapture.o
+	$(CXX) $(CPPFLAGS) $(APP_CPPFLAGS) $(CXXFLAGS) $(APP_LDFLAGS) -o $@ $^ -lbe $(APP_LDEND)
+
+capture-timing: $(BUILD)/capture_timing
 
 package: all
 	bash tools/package-haiku.sh
