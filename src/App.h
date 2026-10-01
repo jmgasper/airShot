@@ -40,6 +40,7 @@ private:
 			void				_ShowSettings();
 			void				_ApplySettings(const Settings& settings);
 			void				_SyncDeskbar();
+			void				_CloseOwnWindows();
 			void				_SaveSettings();
 			void				_HideOwnWindows();
 
@@ -51,6 +52,8 @@ private:
 			bool				fCapturing;
 			bool				fCaptureRequested;
 			BMessageRunner*		fDelayRunner;
+			BMessageRunner*		fDeskbarRetry;
+			int32				fDeskbarTries;
 };
 
 }  // namespace airshot

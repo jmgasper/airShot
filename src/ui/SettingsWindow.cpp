@@ -3,6 +3,8 @@
 #include <Application.h>
 #include <Box.h>
 #include <Button.h>
+#include <GridView.h>
+#include <GroupView.h>
 #include <LayoutBuilder.h>
 #include <MenuItem.h>
 #include <Path.h>
@@ -78,9 +80,13 @@ SettingsWindow::SettingsWindow(const Settings& settings)
 	hint->SetFont(be_plain_font);
 	hint->SetHighUIColor(B_PANEL_TEXT_COLOR, B_DISABLED_LABEL_TINT);
 
+	// A BBox sizes itself from its first child view, so each section's
+	// content is a container view with its own layout.
 	BBox* shortcuts = new BBox("shortcuts");
 	shortcuts->SetLabel("Keyboard shortcuts");
-	BLayoutBuilder::Grid<>(shortcuts, B_USE_DEFAULT_SPACING, B_USE_SMALL_SPACING)
+	BGridView* shortcutsGrid = new BGridView(B_USE_DEFAULT_SPACING, B_USE_SMALL_SPACING);
+	shortcuts->AddChild(shortcutsGrid);
+	BLayoutBuilder::Grid<>(shortcutsGrid)
 		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING + 6, B_USE_DEFAULT_SPACING,
 			B_USE_DEFAULT_SPACING)
 		.Add(new BStringView("l1", "Full screen:"), 0, 0)
@@ -94,7 +100,9 @@ SettingsWindow::SettingsWindow(const Settings& settings)
 
 	BBox* capture = new BBox("capture");
 	capture->SetLabel("Capturing");
-	BLayoutBuilder::Group<>(capture, B_VERTICAL, B_USE_SMALL_SPACING)
+	BGroupView* captureGroup = new BGroupView(B_VERTICAL, B_USE_SMALL_SPACING);
+	capture->AddChild(captureGroup);
+	BLayoutBuilder::Group<>(captureGroup)
 		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING + 6, B_USE_DEFAULT_SPACING,
 			B_USE_DEFAULT_SPACING)
 		.Add(fIncludeCursor)
@@ -107,7 +115,9 @@ SettingsWindow::SettingsWindow(const Settings& settings)
 
 	BBox* after = new BBox("after");
 	after->SetLabel("After capturing");
-	BLayoutBuilder::Group<>(after, B_VERTICAL, B_USE_SMALL_SPACING)
+	BGroupView* afterGroup = new BGroupView(B_VERTICAL, B_USE_SMALL_SPACING);
+	after->AddChild(afterGroup);
+	BLayoutBuilder::Group<>(afterGroup)
 		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING + 6, B_USE_DEFAULT_SPACING,
 			B_USE_DEFAULT_SPACING)
 		.AddGroup(B_HORIZONTAL)

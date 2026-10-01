@@ -23,7 +23,9 @@ namespace airshot {
 
 BBitmap* Export::Flatten(const BBitmap* base, const std::vector<AnnotationRef>& items)
 {
-	BBitmap* result = new BBitmap(base->Bounds(), B_RGBA32, true);
+	// Opaque output: app_server leaves the alpha channel of offscreen
+	// bitmaps undefined, so a transparent result cannot be rendered here.
+	BBitmap* result = new BBitmap(base->Bounds(), B_RGB32, true);
 	if (result->InitCheck() != B_OK) {
 		delete result;
 		return NULL;
@@ -32,9 +34,12 @@ BBitmap* Export::Flatten(const BBitmap* base, const std::vector<AnnotationRef>& 
 	result->AddChild(view);
 	if (result->Lock()) {
 		view->SetDrawingMode(B_OP_COPY);
-		view->SetHighColor(0, 0, 0, 0);
-		view->FillRect(view->Bounds());
-		view->SetDrawingMode(base->ColorSpace() == B_RGBA32 ? B_OP_ALPHA : B_OP_COPY);
+		if (base->ColorSpace() == B_RGBA32) {
+			view->SetHighColor(255, 255, 255);
+			view->FillRect(view->Bounds());
+			view->SetDrawingMode(B_OP_ALPHA);
+			view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
+		}
 		view->DrawBitmap(base, B_ORIGIN);
 		for (const AnnotationRef& item : items)
 			item->Draw(view, base);

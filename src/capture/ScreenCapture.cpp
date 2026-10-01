@@ -33,6 +33,8 @@ BBitmap* ScreenCapture::GrabScreen(bool includeCursor)
 	if (!includeCursor && be_app != NULL && !be_app->IsCursorHidden()) {
 		be_app->HideCursor();
 		hidden = true;
+		// The software cursor is removed asynchronously; give it a moment.
+		snooze(150000);
 	}
 	status_t status = screen.GetBitmap(&bitmap, includeCursor);
 	if (hidden)

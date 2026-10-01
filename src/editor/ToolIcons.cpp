@@ -6,6 +6,7 @@
 #include <View.h>
 
 #include <math.h>
+#include <string.h>
 
 namespace airshot {
 
@@ -16,17 +17,21 @@ struct IconCanvas {
 	BView* view;
 	float size;
 
-	IconCanvas(float size)
+	// Draws onto an opaque background: this app_server leaves the alpha
+	// channel of offscreen bitmaps undefined, so icons are rendered on white
+	// and on black and their alpha is derived from the difference.
+	IconCanvas(float size, uint8 background)
 		:
 		size(size)
 	{
-		bitmap = new BBitmap(BRect(0, 0, size - 1, size - 1), B_RGBA32, true);
+		bitmap = new BBitmap(BRect(0, 0, size - 1, size - 1), B_RGB32, true);
+		memset(bitmap->Bits(), background, bitmap->BitsLength());
 		view = new BView(bitmap->Bounds(), "icon", B_FOLLOW_NONE, 0);
 		bitmap->AddChild(view);
 		bitmap->Lock();
 		view->SetDrawingMode(B_OP_COPY);
-		view->SetHighColor(0, 0, 0, 0);
-		view->FillRect(view->Bounds());
+		view->SetHighColor(background, background, background);
+		Rect(view->Bounds(), true);
 		view->SetDrawingMode(B_OP_ALPHA);
 		view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
 		view->SetLineMode(B_ROUND_CAP, B_ROUND_JOIN);
@@ -34,13 +39,13 @@ struct IconCanvas {
 		view->SetPenSize(fmaxf(1.5f, size / 11));
 	}
 
-	BBitmap* Finish()
+	~IconCanvas()
 	{
 		view->Sync();
 		bitmap->Unlock();
 		bitmap->RemoveChild(view);
 		delete view;
-		return bitmap;
+		delete bitmap;
 	}
 
 	// Coordinates in a 0..1 unit square.
@@ -58,7 +63,72 @@ struct IconCanvas {
 	{
 		view->StrokeLine(P(x0, y0), P(x1, y1));
 	}
+
+	// Rectangles as polygons: the axis-aligned rectangle fast path
+	// misrenders in alpha mode here. Outlines are open polylines.
+	void Rect(BRect r, bool fill)
+	{
+		BPoint points[5] = {r.LeftTop(), r.RightTop(), r.RightBottom(), r.LeftBottom(),
+			r.LeftTop()};
+		if (fill)
+			view->FillPolygon(points, 4);
+		else
+			view->StrokePolygon(points, 5, false);
+	}
+
+	void TranslucentRect(BRect r, rgb_color color)
+	{
+		rgb_color previous = view->HighColor();
+		view->SetHighColor(color);
+		Rect(r, true);
+		view->SetHighColor(previous);
+	}
+
+	void EllipseOutline(BRect r)
+	{
+		const float k = 0.5523f;
+		float cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+		float rx = r.Width() / 2, ry = r.Height() / 2;
+		BShape shape;
+		shape.MoveTo(BPoint(cx + rx, cy));
+		shape.BezierTo(BPoint(cx + rx, cy + ry * k), BPoint(cx + rx * k, cy + ry), BPoint(cx, cy + ry));
+		shape.BezierTo(BPoint(cx - rx * k, cy + ry), BPoint(cx - rx, cy + ry * k), BPoint(cx - rx, cy));
+		shape.BezierTo(BPoint(cx - rx, cy - ry * k), BPoint(cx - rx * k, cy - ry), BPoint(cx, cy - ry));
+		shape.BezierTo(BPoint(cx + rx * k, cy - ry), BPoint(cx + rx, cy - ry * k), BPoint(cx + rx, cy));
+		view->StrokeShape(&shape);
+	}
 };
+
+
+// Combines the white and black renderings into an RGBA icon:
+// alpha = 255 - (white - black), colour = black / alpha.
+BBitmap* Compose(float size, void (*draw)(IconCanvas&, int32), int32 what)
+{
+	BBitmap* result = new BBitmap(BRect(0, 0, size - 1, size - 1), B_RGBA32);
+	IconCanvas onWhite(size, 255);
+	draw(onWhite, what);
+	onWhite.view->Sync();
+	IconCanvas onBlack(size, 0);
+	draw(onBlack, what);
+	onBlack.view->Sync();
+	int32 count = result->BitsLength() / 4;
+	uint8* white = (uint8*)onWhite.bitmap->Bits();
+	uint8* black = (uint8*)onBlack.bitmap->Bits();
+	uint8* out = (uint8*)result->Bits();
+	for (int32 i = 0; i < count; i++, white += 4, black += 4, out += 4) {
+		int32 alpha = 0;
+		for (int32 c = 0; c < 3; c++)
+			alpha += 255 - (white[c] - black[c]);
+		alpha /= 3;
+		alpha = alpha < 0 ? 0 : (alpha > 255 ? 255 : alpha);
+		for (int32 c = 0; c < 3; c++) {
+			int32 value = alpha > 0 ? black[c] * 255 / alpha : 0;
+			out[c] = value > 255 ? 255 : value;
+		}
+		out[3] = alpha;
+	}
+	return result;
+}
 
 
 void DrawArrowHead(IconCanvas& c, BPoint from, BPoint to, float length)
@@ -117,9 +187,10 @@ char ToolShortcut(Tool tool)
 }
 
 
-BBitmap* MakeToolIcon(Tool tool, float size)
+static void DrawTool(IconCanvas& c, int32 what)
 {
-	IconCanvas c(size);
+	Tool tool = (Tool)what;
+	float size = c.size;
 	BView* v = c.view;
 	rgb_color text = ui_color(B_PANEL_TEXT_COLOR);
 	switch (tool) {
@@ -138,10 +209,10 @@ BBitmap* MakeToolIcon(Tool tool, float size)
 			c.Line(0.15f, 0.85f, 0.85f, 0.15f);
 			break;
 		case kToolRectangle:
-			v->StrokeRect(c.R(0.14f, 0.2f, 0.86f, 0.8f));
+			c.Rect(c.R(0.14f, 0.2f, 0.86f, 0.8f), false);
 			break;
 		case kToolEllipse:
-			v->StrokeEllipse(c.R(0.1f, 0.18f, 0.9f, 0.82f));
+			c.EllipseOutline(c.R(0.1f, 0.18f, 0.9f, 0.82f));
 			break;
 		case kToolPen:
 		{
@@ -154,10 +225,7 @@ BBitmap* MakeToolIcon(Tool tool, float size)
 		}
 		case kToolHighlighter:
 		{
-			v->SetHighColor(250, 210, 30, 170);
-			v->SetPenSize(size * 0.3f);
-			v->SetLineMode(B_SQUARE_CAP, B_ROUND_JOIN);
-			c.Line(0.2f, 0.5f, 0.8f, 0.5f);
+			c.TranslucentRect(c.R(0.15f, 0.35f, 0.85f, 0.65f), (rgb_color){250, 210, 30, 170});
 			v->SetHighColor(text);
 			v->SetPenSize(fmaxf(1.5f, size / 12));
 			c.Line(0.15f, 0.36f, 0.85f, 0.36f);
@@ -197,8 +265,8 @@ BBitmap* MakeToolIcon(Tool tool, float size)
 				int y = i / 3;
 				rgb_color color = text;
 				color.alpha = shades[i] + 60;
-				v->SetHighColor(color);
-				v->FillRect(BRect(x * cell + 1, y * cell + 1, (x + 1) * cell - 1, (y + 1) * cell - 1));
+				c.TranslucentRect(BRect(x * cell + 1, y * cell + 1, (x + 1) * cell - 1,
+					(y + 1) * cell - 1), color);
 			}
 			break;
 		}
@@ -211,13 +279,13 @@ BBitmap* MakeToolIcon(Tool tool, float size)
 		default:
 			break;
 	}
-	return c.Finish();
 }
 
 
-BBitmap* MakeActionIcon(ActionIcon icon, float size)
+static void DrawAction(IconCanvas& c, int32 what)
 {
-	IconCanvas c(size);
+	ActionIcon icon = (ActionIcon)what;
+	float size = c.size;
 	BView* v = c.view;
 	rgb_color text = ui_color(B_PANEL_TEXT_COLOR);
 	switch (icon) {
@@ -237,8 +305,8 @@ BBitmap* MakeActionIcon(ActionIcon icon, float size)
 			break;
 		}
 		case kIconCopy:
-			v->StrokeRect(c.R(0.12f, 0.12f, 0.62f, 0.62f));
-			v->FillRect(c.R(0.38f, 0.38f, 0.9f, 0.9f));
+			c.Rect(c.R(0.12f, 0.12f, 0.62f, 0.62f), false);
+			c.Rect(c.R(0.38f, 0.38f, 0.9f, 0.9f), true);
 			break;
 		case kIconSave:
 			c.Line(0.5f, 0.08f, 0.5f, 0.62f);
@@ -248,21 +316,20 @@ BBitmap* MakeActionIcon(ActionIcon icon, float size)
 			c.Line(0.88f, 0.9f, 0.88f, 0.62f);
 			break;
 		case kIconFullScreen:
-			v->StrokeRoundRect(c.R(0.06f, 0.14f, 0.94f, 0.8f), 2, 2);
+			c.Rect(c.R(0.06f, 0.14f, 0.94f, 0.8f), false);
 			c.Line(0.35f, 0.92f, 0.65f, 0.92f);
 			break;
 		case kIconWindow:
 		{
-			v->StrokeRoundRect(c.R(0.08f, 0.22f, 0.92f, 0.9f), 2, 2);
-			v->FillRect(c.R(0.08f, 0.08f, 0.55f, 0.22f));
+			c.Rect(c.R(0.08f, 0.22f, 0.92f, 0.9f), false);
+			c.Rect(c.R(0.08f, 0.08f, 0.55f, 0.22f), true);
 			break;
 		}
 		case kIconRegion:
 		{
 			rgb_color dim = text;
 			dim.alpha = 90;
-			v->SetHighColor(dim);
-			v->FillRect(c.R(0.04f, 0.04f, 0.96f, 0.96f));
+			c.TranslucentRect(c.R(0.04f, 0.04f, 0.96f, 0.96f), dim);
 			v->SetHighColor(text);
 			float d = size * 0.22f;
 			BRect r = c.R(0.28f, 0.28f, 0.8f, 0.8f);
@@ -291,13 +358,24 @@ BBitmap* MakeActionIcon(ActionIcon icon, float size)
 					BPoint(cx + cosf(angle) * outer, cy + sinf(angle) * outer));
 			}
 			v->SetPenSize(size * 0.14f);
-			v->StrokeEllipse(BPoint(cx, cy), inner, inner);
+			c.EllipseOutline(BRect(cx - inner, cy - inner, cx + inner, cy + inner));
 			break;
 		}
 		default:
 			break;
 	}
-	return c.Finish();
+}
+
+
+BBitmap* MakeToolIcon(Tool tool, float size)
+{
+	return Compose(size, DrawTool, tool);
+}
+
+
+BBitmap* MakeActionIcon(ActionIcon icon, float size)
+{
+	return Compose(size, DrawAction, icon);
 }
 
 }  // namespace airshot

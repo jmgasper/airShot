@@ -10,6 +10,9 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#define OTRACE(...) do { if (getenv("AIRSHOT_TRACE") != NULL) { fprintf(stderr, "overlay %lld: ", (long long)(system_time() / 1000)); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } } while (0)
 
 namespace airshot {
 
@@ -46,9 +49,11 @@ float Ease(float from, float to)
 OverlayWindow::OverlayWindow(const BBitmap* screen, const std::vector<WindowEntry>& windows,
 	CaptureKind mode, bool animate, bool includeDecorations, const BMessenger& target)
 	:
+	// The same window type Haiku's own Screenshot uses for its area
+	// selector: borderless, above everything including Deskbar.
 	BWindow(BScreen().Frame(), "airShot overlay", kWindowScreenWindow,
 		B_NOT_RESIZABLE | B_NOT_CLOSABLE | B_NOT_ZOOMABLE | B_NOT_MOVABLE
-			| B_NOT_MINIMIZABLE),
+			| B_NOT_MINIMIZABLE | B_NOT_ANCHORED_ON_ACTIVATE),
 	fTarget(target),
 	fFinished(false)
 {
@@ -60,6 +65,7 @@ OverlayWindow::OverlayWindow(const BBitmap* screen, const std::vector<WindowEntr
 
 OverlayWindow::~OverlayWindow()
 {
+	OTRACE("window destroyed, finished=%d", (int)fFinished);
 	if (!fFinished) {
 		BMessage cancelled(kMsgOverlayCancelled);
 		fTarget.SendMessage(&cancelled);
@@ -69,6 +75,7 @@ OverlayWindow::~OverlayWindow()
 
 bool OverlayWindow::QuitRequested()
 {
+	OTRACE("QuitRequested");
 	return true;
 }
 
@@ -147,10 +154,13 @@ void OverlayView::_MakeDimmedCopy()
 
 void OverlayView::AttachedToWindow()
 {
+	OTRACE("AttachedToWindow");
 	BView::AttachedToWindow();
 	BMessage tick(kMsgTick);
 	fRunner = new BMessageRunner(BMessenger(this), &tick, kTickInterval);
-	SetEventMask(B_POINTER_EVENTS | B_KEYBOARD_EVENTS, B_NO_POINTER_HISTORY);
+	// No permanent event mask: the view covers the whole screen anyway, and
+	// a B_POINTER_EVENTS mask with B_NO_POINTER_HISTORY stopped MouseMoved()
+	// from arriving at all on the test machine.
 	uint32 buttons;
 	GetMouse(&fMouse, &buttons, false);
 	if (fMode == kCaptureWindow) {
@@ -259,18 +269,27 @@ void OverlayView::MessageReceived(BMessage* message)
 
 void OverlayView::Draw(BRect updateRect)
 {
+	OTRACE("Draw %g,%g-%g,%g state %d", updateRect.left, updateRect.top, updateRect.right,
+		updateRect.bottom, (int)fState);
 	SetDrawingMode(B_OP_COPY);
-	if (fDimmed != NULL)
-		DrawBitmap(fDimmed, updateRect, updateRect);
-	else
-		DrawBitmap(fScreen, updateRect, updateRect);
-
-	if (fShown.IsValid()) {
-		BRect bright = fShown & updateRect;
-		if (bright.IsValid())
-			DrawBitmap(fScreen, bright, bright);
-		_DrawSelectionChrome(fShown, updateRect);
+	// Copy the frozen screen per clipping rectangle: the crosshair lines
+	// alone make the update rectangle span the whole screen.
+	BRegion clipping;
+	GetClippingRegion(&clipping);
+	if (clipping.CountRects() == 0)
+		clipping.Set(updateRect);
+	for (int32 i = 0; i < clipping.CountRects(); i++) {
+		BRect rect = clipping.RectAt(i);
+		DrawBitmap(fDimmed != NULL ? fDimmed : fScreen, rect, rect);
+		if (fShown.IsValid()) {
+			BRect bright = fShown & rect;
+			if (bright.IsValid())
+				DrawBitmap(fScreen, bright, bright);
+		}
 	}
+
+	if (fShown.IsValid())
+		_DrawSelectionChrome(fShown, updateRect);
 
 	if (fMode == kCaptureRegion && fState == kIdle)
 		_DrawCrosshair(updateRect);
@@ -578,6 +597,7 @@ void OverlayView::MouseDown(BPoint where)
 	if (fState == kConfirming)
 		return;
 	int32 buttons = Window()->CurrentMessage()->GetInt32("buttons", B_PRIMARY_MOUSE_BUTTON);
+	OTRACE("MouseDown %g,%g buttons %d state %d", where.x, where.y, (int)buttons, (int)fState);
 	if ((buttons & B_SECONDARY_MOUSE_BUTTON) != 0) {
 		// Right click: drop the selection, or leave.
 		if (fState == kSelected) {
@@ -631,6 +651,7 @@ void OverlayView::MouseDown(BPoint where)
 
 void OverlayView::MouseMoved(BPoint where, uint32 transit, const BMessage* drag)
 {
+	OTRACE("MouseMoved %g,%g state %d", where.x, where.y, (int)fState);
 	if (fState == kConfirming)
 		return;
 	BPoint previousMouse = fMouse;
@@ -773,6 +794,7 @@ void OverlayView::MouseUp(BPoint where)
 
 void OverlayView::KeyDown(const char* bytes, int32 numBytes)
 {
+	OTRACE("KeyDown 0x%02x state %d", numBytes > 0 ? (unsigned char)bytes[0] : 0, (int)fState);
 	if (numBytes < 1 || fState == kConfirming)
 		return;
 	uint32 modifiers = Window()->CurrentMessage()->GetInt32("modifiers", 0);
@@ -847,6 +869,7 @@ void OverlayView::_SendResult()
 
 void OverlayView::_Cancel()
 {
+	OTRACE("cancel");
 	BMessage cancelled(kMsgOverlayCancelled);
 	static_cast<OverlayWindow*>(Window())->Finish(&cancelled);
 }

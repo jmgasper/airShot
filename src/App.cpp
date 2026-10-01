@@ -13,6 +13,7 @@
 #include <View.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "capture/OverlayWindow.h"
@@ -27,6 +28,7 @@ namespace airshot {
 namespace {
 
 constexpr uint32 kMsgCaptureNow = 'CpNw';
+constexpr uint32 kMsgSyncDeskbar = 'SyDb';
 // Our own windows need a moment to disappear from the screen before it is
 // read back.
 constexpr bigtime_t kHideSettleTime = 250000;
@@ -43,7 +45,9 @@ App::App()
 	fPendingKind(kCaptureFull),
 	fCapturing(false),
 	fCaptureRequested(false),
-	fDelayRunner(NULL)
+	fDelayRunner(NULL),
+	fDeskbarRetry(NULL),
+	fDeskbarTries(0)
 {
 	fSettings.Load();
 	if (fSettings.hotKeysPaused) {
@@ -57,6 +61,7 @@ App::App()
 App::~App()
 {
 	delete fDelayRunner;
+	delete fDeskbarRetry;
 	delete fScreen;
 }
 
@@ -144,6 +149,10 @@ void App::RefsReceived(BMessage* message)
 
 void App::MessageReceived(BMessage* message)
 {
+	if (getenv("AIRSHOT_TRACE") != NULL) {
+		fprintf(stderr, "airShot: message '%.4s' capturing=%d\n", (const char*)&message->what,
+			(int)fCapturing);
+	}
 	switch (message->what) {
 		case kMsgCaptureFull:
 			_StartCapture(kCaptureFull);
@@ -156,6 +165,9 @@ void App::MessageReceived(BMessage* message)
 			break;
 		case kMsgCaptureNow:
 			_CaptureNow();
+			break;
+		case kMsgSyncDeskbar:
+			_SyncDeskbar();
 			break;
 		case kMsgOverlayDone:
 			_OverlayDone(message);
@@ -273,8 +285,11 @@ void App::_OverlayDone(BMessage* message)
 	BBitmap* result = NULL;
 	int32 kind = message->GetInt32("kind", kCaptureRegion);
 	float tabHeight = message->GetFloat("window_tab_height", 0);
-	if (kind == kCaptureWindow && fSettings.includeDecorations && tabHeight > 0
-		&& !message->GetBool("window_desktop", false)) {
+	// Transparent space beside the tab, like Haiku's Screenshot, is disabled:
+	// exports are opaque (see Export::Flatten) and would show it white.
+	const bool kTransparentTabSpace = false;
+	if (kTransparentTabSpace && kind == kCaptureWindow && fSettings.includeDecorations
+		&& tabHeight > 0 && !message->GetBool("window_desktop", false)) {
 		// Like Haiku's Screenshot: the space beside the tab becomes transparent.
 		WindowEntry entry;
 		entry.team = message->GetInt32("window_team", -1);
@@ -407,10 +422,38 @@ void App::_SyncDeskbar()
 	bool present = deskbar.HasItem(DeskbarView::kName);
 	if (fSettings.showInDeskbar && !present) {
 		app_info info;
-		if (GetAppInfo(&info) == B_OK)
-			deskbar.AddItem(&info.ref);
+		status_t status = GetAppInfo(&info);
+		if (status == B_OK)
+			status = deskbar.AddItem(&info.ref);
+		if (status != B_OK) {
+			fprintf(stderr, "airShot: adding the Deskbar icon failed: %s\n", strerror(status));
+			// Deskbar may still be starting (at login, or after a restart).
+			delete fDeskbarRetry;
+			fDeskbarRetry = NULL;
+			if (++fDeskbarTries <= 12) {
+				BMessage retry(kMsgSyncDeskbar);
+				fDeskbarRetry = new BMessageRunner(BMessenger(this), &retry, 5000000, 1);
+			}
+		}
 	} else if (!fSettings.showInDeskbar && present)
 		deskbar.RemoveItem(DeskbarView::kName);
+}
+
+
+void App::_CloseOwnWindows()
+{
+	// The launcher and settings windows hide instead of quitting when the
+	// user closes them; when the application quits they must really go.
+	BWindow* windows[] = {fMainWindow, fSettingsWindow};
+	for (BWindow* window : windows) {
+		if (window != NULL && window->Lock()) {
+			if (window == fMainWindow && !window->IsHidden())
+				fSettings.mainWindowFrame = window->Frame();
+			window->Quit();
+		}
+	}
+	fMainWindow = NULL;
+	fSettingsWindow = NULL;
 }
 
 
@@ -436,6 +479,7 @@ void App::AboutRequested()
 
 bool App::QuitRequested()
 {
+	_CloseOwnWindows();
 	if (!BApplication::QuitRequested())
 		return false;
 	if (fSettings.hotKeysPaused) {

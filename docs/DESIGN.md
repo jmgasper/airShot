@@ -78,3 +78,30 @@ shared until a crop replaces it). Blur annotations cache a filtered copy of
 the pixels under them; the cache is dropped when they move or the base
 changes. Export draws the base and the annotations into an offscreen
 `B_RGBA32` bitmap.
+
+## Platform gotchas found on the X399 workstation (air/OS fork, 2026-10-01)
+
+- **Offscreen bitmap alpha is undefined.** Drawing into a `B_RGBA32` bitmap
+  that accepts views leaves the alpha channel of every touched pixel random,
+  and `FillRect` in `B_OP_ALPHA` mode writes garbage colour too. Toolbar icons
+  are therefore rendered twice (on white and on black, `B_RGB32`) and their
+  alpha is recovered from the difference (`ToolIcons.cpp`); exports are
+  flattened into opaque `B_RGB32` bitmaps (`Export::Flatten`). Rectangles in
+  icons are drawn as polygons/polylines. `tests/IconProbe*.cpp` reproduce it.
+- **input_server loads a *created* filter, not a renamed one.** Replacing
+  the add-on with `mv` leaves nothing loaded; `tools/install-dev.sh` removes
+  the old file and copies the new one. Package activation is fine.
+- **Never overwrite the app binary in place** while Deskbar shows the tray
+  icon: Deskbar maps the executable and crashes. Install a new file (rename)
+  or a package.
+- **Screen readback does not include the overlay** while a GL-compositing
+  Summit benchmark runs; `BScreen::GetBitmap` and the VNC server both miss
+  it although it is on the physical display. Trace the overlay with
+  `AIRSHOT_TRACE=1` (stderr) instead of relying on VNC screenshots.
+- A `B_POINTER_EVENTS` event mask with `B_NO_POINTER_HISTORY` set
+  permanently on the overlay view stopped `MouseMoved()`; the view relies on
+  being under the pointer and on `SetMouseEventMask()` during drags.
+- `BBox` sizes itself from its first child view: give it a container view
+  with the layout instead of setting a layout on the box itself.
+- The physical screen is 7680×2160 with 2× scaling; captures are
+  3840×1080 logical pixels.

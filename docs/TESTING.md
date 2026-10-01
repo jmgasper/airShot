@@ -12,7 +12,10 @@ airShot is built and tested on the X399 Haiku workstation (192.168.1.244):
   `~/config/non-packaged/apps/airShot`, optionally starting it.
 - `tools/sync-build.sh package` builds the hpkg in `artifacts/`;
   `pkgman install -y <hpkg>` installs it (bump the version first when
-  reinstalling).
+  reinstalling). Remove a dev install first (`desklink --remove=airShot`, the
+  files under `~/config/non-packaged`), or two filters will be loaded.
+- `tools/build-cross.sh` cross-compiles on Linux with the x399 Haiku build
+  tree, for quick compile checks when the workstation is unreachable.
 
 The workstation's VNC server (port 5900) injects input through the
 `InputEventInjector` device, so keystrokes sent over VNC pass through
@@ -27,6 +30,19 @@ python3 tools/vnc.py click X Y / drag X0 Y0 X1 Y1 / type "text"
 
 The NanoKVM at 192.168.1.22 can send real USB keyboard events as a second
 path (`/mnt/HaikuWork/x399/tools/kvm.py`).
+
+`tools/vnc-script.sh` runs a list of `vnc.py` commands (one per line, with
+`shot NAME X,Y,W,H` and `full NAME SCALE` for captures). Start the app with
+`AIRSHOT_TRACE=1` (what `tools/install-dev.sh --run` does) to get message and
+overlay traces in `/boot/home/airshot/app.log`; `touch /boot/home/airshot/.trace`
+makes the filter log every key press and dispatch to the syslog. The
+workstation's `debug_server` is set to write crash reports for airShot to the
+Desktop without a dialog (`~/config/settings/system/debug_server/settings`).
+
+Note that the VNC server (and `BScreen::GetBitmap`) did not show the overlay
+window at all while a Summit GL benchmark was running, and a user working at
+the physical display sees and reacts to every test capture; keep interactive
+tests short.
 
 ## Unit tests
 

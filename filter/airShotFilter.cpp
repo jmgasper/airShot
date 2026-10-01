@@ -13,7 +13,9 @@
 #include <add-ons/input_server/InputServerFilter.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <syslog.h>
+#include <unistd.h>
 
 #include "HotKey.h"
 #include "Messages.h"
@@ -116,10 +118,17 @@ private:
 		request.AddBool("hotkey", true);
 
 		BMessenger app(kAppSignature);
+		bool trace = access("/boot/home/airshot/.trace", F_OK) == 0;
 		if (app.IsValid()) {
-			app.SendMessage(&request);
+			status_t status = app.SendMessage(&request);
+			if (trace) {
+				syslog(LOG_INFO, "airShot filter: dispatch kind %d to running app: %s",
+					(int)kind, strerror(status));
+			}
 			return;
 		}
+		if (trace)
+			syslog(LOG_INFO, "airShot filter: dispatch kind %d, app not running", (int)kind);
 		if (!launch)
 			return;
 		// Command line arguments reach the application before ReadyToRun(),
@@ -172,6 +181,10 @@ public:
 				if (message->FindInt32("key", &key) != B_OK
 					|| message->FindInt32("modifiers", &modifiers) != B_OK)
 					return B_DISPATCH_MESSAGE;
+				if (getenv("AIRSHOT_FILTER_TRACE") != NULL || access("/boot/home/airshot/.trace", F_OK) == 0) {
+					syslog(LOG_INFO, "airShot filter: key 0x%02x modifiers 0x%04x repeat %d",
+						(unsigned)key, (unsigned)modifiers, (int)message->GetInt32("be:key_repeat", 0));
+				}
 				// Holding the key must not fire again and again.
 				if (message->GetInt32("be:key_repeat", 0) > 1)
 					return key == fSwallowKeyUp ? B_SKIP_MESSAGE : B_DISPATCH_MESSAGE;

@@ -12,7 +12,7 @@ namespace airshot {
 
 class Export {
 public:
-	// A new B_RGBA32 bitmap with the annotations painted onto the base.
+	// A new opaque B_RGB32 bitmap with the annotations painted onto the base.
 	static	BBitmap*			Flatten(const BBitmap* base, const std::vector<AnnotationRef>& items);
 
 	static	status_t			SavePNG(const BBitmap* bitmap, const char* path);
