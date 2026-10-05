@@ -30,7 +30,7 @@ FILTER_OBJ = $(FILTER_SRC:%.cpp=$(BUILD)/filter/%.o)
 FILTER_CPPFLAGS = -I/boot/system/develop/headers/private/storage
 FILTER_LIBS = -lbe
 
-.PHONY: all app filter package clean icon capture-timing check check-host
+.PHONY: all app filter package clean icon tool-icons icon-dump capture-timing check check-host
 
 all: $(BUILD)/airShot $(BUILD)/airShot_filter
 app: $(BUILD)/airShot
@@ -67,6 +67,15 @@ check-host: check
 
 icon:
 	python3 tools/make-icon.py resources/branding/airshot-icon.hvif resources/branding/airshot-icon-preview.png
+
+# Optional artwork regeneration; needs Python fontTools on the host.
+tool-icons:
+	python3 tools/make-tool-icons.py
+
+$(BUILD)/icon_dump: tests/IconDump.cpp $(BUILD)/src/editor/ToolIcons.o
+	$(CXX) $(CPPFLAGS) $(APP_CPPFLAGS) $(CXXFLAGS) $(APP_LDFLAGS) -o $@ $^ -lbe -ltranslation $(APP_LDEND)
+
+icon-dump: $(BUILD)/icon_dump
 
 $(BUILD)/capture_timing: tests/CaptureTiming.cpp $(BUILD)/src/capture/ScreenCapture.o
 	$(CXX) $(CPPFLAGS) $(APP_CPPFLAGS) $(CXXFLAGS) $(APP_LDFLAGS) -o $@ $^ -lbe $(APP_LDEND)

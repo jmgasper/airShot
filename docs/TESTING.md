@@ -74,6 +74,14 @@ alone does not fix this OS bottleneck.
 
 ## Manual checklist
 
+For icon changes, `make icon-dump` builds a native renderer/export probe.
+Create an output directory and run `build-haiku/icon_dump <directory> <size>`
+at 16, 20, 24, 32 and 48 pixels. It checks each icon has both visible pixels
+and transparent space and exports all 19 as PNGs. Also inspect the installed
+launcher and toolbar over VNC: antialiasing, the blur grid and the counter's
+cut-out must survive button drawing. Confirm selected tools remain visible
+and undo/redo visibly dim and enable as the document history changes.
+
 1. Print Screen with nothing running: airShot starts and opens the editor
    with the full screen.
 2. Shift+Print Screen: overlay in window mode; hovering moves the highlight

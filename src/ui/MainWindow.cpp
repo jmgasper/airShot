@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include "Messages.h"
+#include "IconButton.h"
 #include "editor/ToolIcons.h"
 
 namespace airshot {
@@ -99,7 +100,7 @@ MainWindow::MainWindow(const Settings& settings)
 
 BButton* MainWindow::_MakeButton(const char* name, const char* label, int32 icon, uint32 command)
 {
-	BButton* button = new BButton(name, label, new BMessage(command));
+	BButton* button = new IconButton(name, label, new BMessage(command));
 	BBitmap* bitmap = MakeActionIcon((ActionIcon)icon, floorf(be_plain_font->Size() * 1.6f));
 	button->SetIcon(bitmap);
 	delete bitmap;

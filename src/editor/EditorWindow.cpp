@@ -22,6 +22,7 @@
 #include "Export.h"
 #include "Messages.h"
 #include "Palette.h"
+#include "ui/IconButton.h"
 
 namespace airshot {
 
@@ -44,6 +45,17 @@ constexpr uint32 kMsgZoomFit = 'ZmFt';
 constexpr uint32 kMsgToggleFill = 'TgFl';
 constexpr uint32 kMsgTogglePixelate = 'TgPx';
 constexpr uint32 kMsgInitialZoom = 'InZm';
+
+void AddIconAction(BPrivate::BToolBar* toolbar, uint32 command, BHandler* target,
+	const BBitmap* icon, const char* tooltip, const char* text = NULL, bool lockable = false)
+{
+	IconButton* button = new IconButton(NULL, text, new BMessage(command), lockable);
+	button->SetIcon(icon);
+	button->SetFlat(true);
+	button->SetToolTip(tooltip);
+	toolbar->AddView(button);
+	button->SetTarget(target);
+}
 
 }  // namespace
 
@@ -248,7 +260,7 @@ void EditorWindow::_BuildToolBar()
 		BBitmap* icon = MakeToolIcon((Tool)i, iconSize);
 		BString tip(ToolName((Tool)i));
 		tip << " (" << ToolShortcut((Tool)i) << ")";
-		fToolBar->AddAction(kMsgToolBase + i, this, icon, tip.String(), NULL, true);
+		AddIconAction(fToolBar, kMsgToolBase + i, this, icon, tip.String(), NULL, true);
 		delete icon;
 	}
 	fToolBar->AddSeparator();
@@ -289,17 +301,17 @@ void EditorWindow::_BuildToolBar()
 
 	fToolBar->AddGlue();
 	BBitmap* icon = MakeActionIcon(kIconUndo, iconSize);
-	fToolBar->AddAction(kMsgUndo, this, icon, "Undo (Alt+Z)");
+	AddIconAction(fToolBar, kMsgUndo, this, icon, "Undo (Alt+Z)");
 	delete icon;
 	icon = MakeActionIcon(kIconRedo, iconSize);
-	fToolBar->AddAction(kMsgRedo, this, icon, "Redo (Shift+Alt+Z)");
+	AddIconAction(fToolBar, kMsgRedo, this, icon, "Redo (Shift+Alt+Z)");
 	delete icon;
 	fToolBar->AddSeparator();
 	icon = MakeActionIcon(kIconCopy, iconSize);
-	fToolBar->AddAction(kMsgCopy, this, icon, "Copy to clipboard (Alt+C)", "Copy");
+	AddIconAction(fToolBar, kMsgCopy, this, icon, "Copy to clipboard (Alt+C)", "Copy");
 	delete icon;
 	icon = MakeActionIcon(kIconSave, iconSize);
-	fToolBar->AddAction(kMsgSave, this, icon, "Save (Alt+S)", "Save");
+	AddIconAction(fToolBar, kMsgSave, this, icon, "Save (Alt+S)", "Save");
 	delete icon;
 }
 

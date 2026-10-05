@@ -83,3 +83,6 @@ the testing setup.
 ## Licence
 
 MIT, see `LICENSE`.
+
+Toolbar artwork includes adapted Font Awesome Free 6.7.2 icons by Fonticons,
+Inc., licensed under CC BY 4.0. See [icon sources and attribution](resources/icons/README.md).

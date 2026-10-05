@@ -5,8 +5,8 @@ summary "Screenshot and markup tool"
 description "airShot captures the whole screen, a window (highlighted as you point at it) or a region you draw, with configurable keyboard shortcuts that work in the background. The captured image opens in an editor with arrows, lines, boxes, ellipses, freehand pen, highlighter, text, numbered markers, blur and crop tools, and can be saved as PNG or copied to the clipboard. An input_server add-on provides the shortcuts; a Deskbar tray icon offers quick access."
 packager "air/OS contributors"
 vendor "air/OS"
-copyrights { "2026 air/OS contributors" }
-licenses { "MIT" }
+copyrights { "2026 air/OS contributors" "2024 Fonticons, Inc." }
+licenses { "MIT" "CC BY 4.0" }
 provides {
 	airshot = 0.1.0~beta
 	app:airShot = 0.1.0~beta

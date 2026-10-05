@@ -489,7 +489,10 @@ void App::AboutRequested()
 		"Capture the whole screen, a window or a region with a keyboard shortcut, "
 		"then annotate with arrows, boxes, text, numbered markers, highlights and blur.");
 	about->AddCopyright(2026, "air/OS contributors");
-	about->AddExtraInfo("Inspired by Shottr and Flameshot.");
+	about->AddExtraInfo("Inspired by Shottr and Flameshot.\n\n"
+		"Toolbar icons adapted from Font Awesome Free 6.7.2.\n"
+		"Copyright 2024 Fonticons, Inc. Licensed under CC BY 4.0.\n"
+		"https://fontawesome.com");
 	about->Show();
 }
 

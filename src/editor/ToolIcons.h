@@ -1,5 +1,5 @@
-// Toolbar icons drawn at runtime with view primitives, so they follow the
-// UI colours and any size.
+// Embedded vector toolbar icons, rasterized at the requested size and tinted
+// with the panel text colour. No installed icon font is required.
 #pragma once
 #include <Bitmap.h>
 
