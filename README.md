@@ -15,6 +15,19 @@ Flameshot.
   Deskbar tray icon offers the capture modes, and the app also opens image
   files for annotation ("Open with…").
 
+<!-- airos-ci:latest-builds:start -->
+## Latest builds
+
+Built automatically by air/OS CI from commit `5fabc95` on 2026-10-05 ([all files](https://github.com/jmgasper/airShot/releases/tag/latest)).
+
+| Architecture | Package |
+|---|---|
+| arm64 | [airshot-0.1.0.beta-4-arm64.hpkg](https://github.com/jmgasper/airShot/releases/download/latest/airshot-0.1.0.beta-4-arm64.hpkg) |
+| x86_64 | [airshot-0.1.0.beta-4-x86_64.hpkg](https://github.com/jmgasper/airShot/releases/download/latest/airshot-0.1.0.beta-4-x86_64.hpkg) |
+
+Install with `pkgman install <file>`, or copy the file into `/boot/system/packages`. Haiku SDK: x86_64 hrev60206-669-g9dc439ceeb, arm64 hrev60206-669-g9dc439ceeb.
+<!-- airos-ci:latest-builds:end -->
+
 ## Default shortcuts
 
 | Action        | Shortcut             |
