@@ -46,6 +46,7 @@ private:
 			CanvasView*			fCanvas;
 			BMenuBar*			fMenuBar;
 			BPrivate::BToolBar*	fToolBar;
+			BPrivate::BToolBar*	fStyleBar;
 			ColorSwatchView*	fSwatches;
 			BMenuField*			fWidthField;
 			BMenuField*			fFontField;

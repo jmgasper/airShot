@@ -1,154 +1,89 @@
 #!/usr/bin/env python3
-"""Build airShot's application icon: a blue rounded tile with a white
-selection frame (corner brackets) and an orange annotation arrow, readable
-from 16 px up.
+"""Generate airShot's native vector camera and annotation-pencil icon.
 
-    python3 tools/make-icon.py resources/branding/airshot-icon.hvif [preview.png]
+Usage: make-icon.py output.hvif [preview.png]. The open camera silhouette,
+blue lens and orange pencil stay legible at small Deskbar sizes.
 """
-import math
-import os
+from pathlib import Path
 import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import hvif  # noqa: E402
+import hvif
 
 C = hvif.hex_color
-K = 0.5523
+styles, paths, shapes = [], [], []
 
 
-def curve(point, pin, pout):
-    return (point, pin, pout)
+def solid(color):
+    styles.append({'color': C(color)})
+    return len(styles) - 1
 
 
-def rounded_rect(left, top, right, bottom, radius):
-    k = K * radius
-    l, t, r, b, rad = left, top, right, bottom, radius
-    return {'closed': True, 'points': [
-        curve((l + rad, t), (l + rad - k, t), (l + rad, t)),
-        curve((r - rad, t), (r - rad, t), (r - rad + k, t)),
-        curve((r, t + rad), (r, t + rad - k), (r, t + rad)),
-        curve((r, b - rad), (r, b - rad), (r, b - rad + k)),
-        curve((r - rad, b), (r - rad + k, b), (r - rad, b)),
-        curve((l + rad, b), (l + rad, b), (l + rad - k, b)),
-        curve((l, b - rad), (l, b - rad + k), (l, b - rad)),
-        curve((l, t + rad), (l, t + rad), (l, t + rad - k)),
-    ]}
+def gradient(start, end, colors):
+    styles.append(hvif.linear_gradient(start, end,
+        [(i / (len(colors) - 1), C(color)) for i, color in enumerate(colors)]))
+    return len(styles) - 1
 
 
-def bracket(cx, cy, dx, dy, length):
-    """An L shape with its corner at (cx, cy), arms towards dx and dy."""
-    return {'closed': False, 'points': [
-        (cx + dx * length, cy), (cx, cy), (cx, cy + dy * length)]}
+def shape(style, points, detail=False):
+    paths.append({'closed': True, 'points': points})
+    item = {'style': style, 'paths': [len(paths) - 1]}
+    if detail:
+        item['lod'] = (0.5, 4.0)
+    shapes.append(item)
 
 
-def arrow(start, end, shaft, head_length, head_width):
-    """A filled arrow polygon from start to end."""
-    (ax, ay), (bx, by) = start, end
-    dx, dy = bx - ax, by - ay
-    length = math.hypot(dx, dy)
-    ux, uy = dx / length, dy / length
-    px, py = -uy, ux  # perpendicular
-    hx, hy = bx - ux * head_length, by - uy * head_length
-    s = shaft / 2.0
-    w = head_width / 2.0
-    return {'closed': True, 'points': [
-        (ax + px * s, ay + py * s),
-        (hx + px * s, hy + py * s),
-        (hx + px * w, hy + py * w),
-        (bx, by),
-        (hx - px * w, hy - py * w),
-        (hx - px * s, hy - py * s),
-        (ax - px * s, ay - py * s),
-    ]}
+def ellipse(style, cx, cy, rx, ry, detail=False):
+    k = 0.55228475
+    shape(style, [
+        ((cx + rx, cy), (cx + rx, cy - k * ry), (cx + rx, cy + k * ry)),
+        ((cx, cy + ry), (cx + k * rx, cy + ry), (cx - k * rx, cy + ry)),
+        ((cx - rx, cy), (cx - rx, cy + k * ry), (cx - rx, cy - k * ry)),
+        ((cx, cy - ry), (cx - k * rx, cy - ry), (cx + k * rx, cy - ry)),
+    ], detail)
 
 
-# ------------------------------------------------------------------ styles
-TILE = hvif.linear_gradient((32, 4), (32, 60), [
-    (0.0, C('5cb4ff')), (0.55, C('2d7fe6')), (1.0, C('1b55b8'))])
-TILE_OUTLINE = {'color': C('0d3577')}
-GLOSS = hvif.linear_gradient((32, 5), (32, 30), [
-    (0.0, (255, 255, 255, 95)), (1.0, (255, 255, 255, 0))])
-FRAME = {'color': C('ffffff')}
-FRAME_SHADOW = {'color': (0, 30, 80, 70)}
-ARROW = hvif.linear_gradient((20, 46), (48, 18), [
-    (0.0, C('ff8a1e')), (1.0, C('ffc247'))])
-ARROW_OUTLINE = {'color': C('7a3a00')}
-SHADOW = hvif.radial_gradient((32, 60), 26, [
-    (0.0, (10, 20, 40, 100)), (0.7, (10, 20, 40, 35)), (1.0, (10, 20, 40, 0))], ratio=0.14)
+outline = solid('233e54')
+edge = gradient((8, 37), (54, 52), ['557788', '304f68'])
+body = gradient((12, 16), (40, 49), ['f4f6ed', 'b5cbd0'])
+top = solid('e7eee6')
+ring = gradient((19, 22), (38, 46), ['5d8098', '244660'])
+glass = gradient((22, 24), (36, 42), ['74d9e5', '288fba', '235891'])
+shine = solid('d1fcfa')
+orange = gradient((43, 27), (56, 50), ['ffcd6b', 'ec8e31'])
+light_orange = solid('ffe2a0')
+wood = solid('f8e4b8')
+white = solid('ffffff')
 
-style_names = ['tile', 'tileOutline', 'gloss', 'frame', 'frameShadow', 'arrow', 'arrowOutline',
-               'shadow']
-styles = [TILE, TILE_OUTLINE, GLOSS, FRAME, FRAME_SHADOW, ARROW, ARROW_OUTLINE, SHADOW]
-S = {name: index for index, name in enumerate(style_names)}
+# Camera body and its bevel; no enclosing app tile.
+shape(outline, [(5, 18), (16, 15), (20, 7), (35, 5), (41, 11), (53, 10),
+                (59, 15), (59, 45), (53, 51), (10, 55), (4, 49)])
+shape(edge, [(8, 20), (54, 13), (56, 17), (56, 44), (51, 48), (11, 52), (7, 48)])
+shape(body, [(7, 20), (19, 18), (23, 10), (34, 8), (40, 15), (53, 13),
+             (53, 45), (7, 50)])
+shape(top, [(8, 20), (20, 18), (24, 11), (34, 10), (37, 15), (22, 19), (8, 22)], True)
+shape(outline, [(42, 19), (49, 18), (49, 23), (42, 24)])
+shape(shine, [(43, 20), (48, 19), (48, 22), (43, 23)], True)
 
-# ------------------------------------------------------------------ paths
-tile = rounded_rect(5, 5, 59, 59, 11)
-gloss = rounded_rect(7, 7, 57, 30, 9)
-arm = 10
-brackets = [
-    bracket(13, 13, 1, 1, arm),
-    bracket(51, 13, -1, 1, arm),
-    bracket(51, 51, -1, -1, arm),
-    bracket(13, 51, 1, -1, arm),
-]
-annotation = arrow((20, 45), (46, 19), 6.5, 15, 17)
-shadow = {'closed': True, 'points': [
-    curve((32 + 1, 60), (32 + 1, 60 - K), (32 + 1, 60 + K)),
-    curve((32, 61), (32 + K, 61), (32 - K, 61)),
-    curve((31, 60), (31, 60 + K), (31, 60 - K)),
-    curve((32, 59), (32 - K, 59), (32 + K, 59)),
-]}
+ellipse(outline, 29, 33, 15, 16)
+ellipse(ring, 29, 32.5, 12.5, 13.5)
+ellipse(glass, 29, 32.5, 9, 10)
+shape(shine, [(24, 27), (28, 25), (30, 25), (24, 32), (22, 32)], True)
 
-path_names = ['tile', 'gloss', 'b0', 'b1', 'b2', 'b3', 'arrow', 'shadow']
-paths = [tile, gloss] + brackets + [annotation, shadow]
-P = {name: index for index, name in enumerate(path_names)}
-
-
-def shape(style, *names, **extra):
-    result = {'style': S[style], 'paths': [P[n] for n in names]}
-    result.update(extra)
-    return result
-
-
-stroke_wide = {'type': 'stroke', 'width': 4.5, 'join': 2, 'cap': 1, 'miter': 4}
-stroke_narrow = {'type': 'stroke', 'width': 5.5, 'join': 2, 'cap': 1, 'miter': 4}
-stroke_shadow = {'type': 'stroke', 'width': 6.5, 'join': 2, 'cap': 1, 'miter': 4}
-contour_large = {'type': 'contour', 'width': 2.5, 'join': 2, 'miter': 4}
-contour_small = {'type': 'contour', 'width': 2, 'join': 2, 'miter': 4}
-contour_arrow = {'type': 'contour', 'width': 2, 'join': 2, 'miter': 4}
-
-SMALL = {'lod': (0.0, 0.5)}
-LARGE = {'lod': (0.5, 4.0)}
-DETAIL = {'lod': (0.95, 4.0)}
-
-shapes = [
-    shape('shadow', 'shadow', matrix=[27.0, 0.0, 0.0, 3.5, 32.0 - 32.0 * 27.0, 60.0 - 60.0 * 3.5],
-          **LARGE),
-    shape('tileOutline', 'tile', transformers=[contour_large], **LARGE),
-    shape('tileOutline', 'tile', transformers=[contour_small], **SMALL),
-    shape('tile', 'tile'),
-    shape('gloss', 'gloss', **DETAIL),
-    shape('frameShadow', 'b0', 'b1', 'b2', 'b3', transformers=[stroke_shadow], **LARGE),
-    shape('frame', 'b0', 'b1', 'b2', 'b3', transformers=[stroke_wide], **LARGE),
-    shape('frame', 'b0', 'b1', 'b2', 'b3', transformers=[stroke_narrow], **SMALL),
-    shape('arrowOutline', 'arrow', transformers=[contour_arrow], **LARGE),
-    shape('arrow', 'arrow'),
-]
+# A diagonal annotation pencil, with a strong tip at the lower right.
+shape(outline, [(39, 45), (50, 27), (54, 25), (62, 31), (62, 35),
+                (50, 54), (36, 60)])
+shape(orange, [(41, 46), (51, 29), (59, 34), (48, 52)])
+shape(light_orange, [(42, 44), (51, 29), (54, 31), (44, 47)], True)
+shape(wood, [(41, 48), (47, 52), (39, 56)])
+shape(outline, [(39, 53), (42, 55), (38, 57)])
+shape(white, [(51, 28), (54, 27), (60, 32), (59, 34)])
 
 icon = {'styles': styles, 'paths': paths, 'shapes': shapes}
-
 if __name__ == '__main__':
-    out = sys.argv[1] if len(sys.argv) > 1 else 'airshot-icon.hvif'
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('airshot-icon.hvif')
     data = hvif.encode(icon)
     hvif.decode(data)
-    with open(out, 'wb') as f:
-        f.write(data)
-    print('%s: %d bytes' % (out, len(data)))
-    svg = out.rsplit('.', 1)[0] + '.svg'
-    with open(svg, 'w') as f:
-        f.write(hvif.to_svg(icon))
-    print('%s: SVG source' % svg)
+    out.write_bytes(data)
+    out.with_suffix('.svg').write_text(hvif.to_svg(icon))
     if len(sys.argv) > 2:
-        image = hvif.preview(icon, 256)
-        image.save(sys.argv[2])
-        print('%s: preview' % sys.argv[2])
+        hvif.preview(icon, 256).save(sys.argv[2])
+    print(f'{out}: {len(data)} bytes, HVIF + SVG')

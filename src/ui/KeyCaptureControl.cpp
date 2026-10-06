@@ -41,6 +41,13 @@ BSize KeyCaptureControl::PreferredSize()
 }
 
 
+BSize KeyCaptureControl::MaxSize()
+{
+	return BLayoutUtils::ComposeSize(ExplicitMaxSize(),
+		BSize(B_SIZE_UNLIMITED, MinSize().height));
+}
+
+
 void KeyCaptureControl::Draw(BRect updateRect)
 {
 	BRect rect = Bounds();
@@ -87,6 +94,7 @@ void KeyCaptureControl::MouseDown(BPoint where)
 void KeyCaptureControl::MakeFocus(bool focus)
 {
 	BControl::MakeFocus(focus);
+	Invalidate();
 	if (!focus && fRecording)
 		StopRecording();
 }
@@ -156,6 +164,8 @@ bool KeyCaptureControl::HandleKeyMessage(const BMessage* message)
 
 void KeyCaptureControl::KeyDown(const char* bytes, int32 numBytes)
 {
+	if (!IsEnabled())
+		return;
 	if (fRecording && Window() != NULL && HandleKeyMessage(Window()->CurrentMessage()))
 		return;
 	if (numBytes == 1 && (bytes[0] == B_SPACE || bytes[0] == B_ENTER)) {

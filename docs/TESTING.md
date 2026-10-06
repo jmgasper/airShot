@@ -49,6 +49,11 @@ tests short.
 `make BUILD=build-host check-host` on Linux (or `make check` on Haiku) runs
 `tests/HotKeyTests.cpp`: shortcut matching, labels and key names.
 
+`make check-ui` on Haiku opens the launcher, settings and editor at 12- and
+18-point fonts. It checks control bounds, visible settings sections, shortcut
+recording cancellation, and an editor minimum width below 1000 pixels at the
+normal font size. It does not save settings or capture the real screen.
+
 ## Capture startup timing
 
 Run airShot with `AIRSHOT_TRACE=1` to log monotonic timestamps for the capture

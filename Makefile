@@ -89,3 +89,10 @@ clean:
 	rm -rf $(BUILD)
 
 -include $(APP_OBJ:.o=.d) $(FILTER_OBJ:.o=.d)
+
+# Native UI regression checks require a running Haiku app_server.
+.PHONY: check-ui
+$(BUILD)/ui_tests: tests/UITests.cpp $(filter-out $(BUILD)/src/main.o $(BUILD)/src/App.o,$(APP_OBJ))
+	$(CXX) $(CPPFLAGS) $(APP_CPPFLAGS) $(CXXFLAGS) $(APP_LDFLAGS) -o $@ $^ $(APP_LIBS) $(APP_LDEND)
+check-ui: $(BUILD)/ui_tests
+	$(BUILD)/ui_tests

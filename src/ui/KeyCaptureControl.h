@@ -21,6 +21,7 @@ public:
 	virtual	void				KeyDown(const char* bytes, int32 numBytes);
 	virtual	void				MakeFocus(bool focus);
 	virtual	BSize				MinSize();
+	virtual	BSize				MaxSize();
 	virtual	BSize				PreferredSize();
 
 			const HotKey&		Key() const { return fHotKey; }

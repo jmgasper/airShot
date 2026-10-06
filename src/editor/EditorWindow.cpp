@@ -65,11 +65,12 @@ class ColorSwatchView : public BView {
 public:
 	ColorSwatchView(int32 selected)
 		:
-		BView("swatches", B_WILL_DRAW),
+		BView("swatches", B_WILL_DRAW | B_NAVIGABLE),
 		fSelected(selected)
 	{
 		fCell = floorf(be_plain_font->Size() * 1.7f);
 		SetExplicitSize(BSize(fCell * kPaletteSize + 4, fCell + 4));
+		SetToolTip("Annotation color. Use Left and Right when focused.");
 	}
 
 	void AttachedToWindow() override
@@ -79,6 +80,10 @@ public:
 
 	void Draw(BRect updateRect) override
 	{
+		if (IsFocus()) {
+			SetHighUIColor(B_KEYBOARD_NAVIGATION_COLOR);
+			StrokeRect(Bounds());
+		}
 		SetDrawingMode(B_OP_ALPHA);
 		SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
 		float radius = fCell * 0.34f;
@@ -99,16 +104,30 @@ public:
 
 	void MouseDown(BPoint where) override
 	{
+		MakeFocus(true);
 		for (int32 i = 0; i < kPaletteSize; i++) {
 			BPoint center = _Center(i);
 			if (fabsf(center.x - where.x) <= fCell / 2 && fabsf(center.y - where.y) <= fCell / 2) {
-				SetSelected(i);
-				BMessage message(kMsgColor);
-				message.AddInt32("index", i);
-				Window()->PostMessage(&message, Window());
+				_Choose(i);
 				return;
 			}
 		}
+	}
+
+	void MakeFocus(bool focus) override
+	{
+		BView::MakeFocus(focus);
+		Invalidate();
+	}
+
+	void KeyDown(const char* bytes, int32 count) override
+	{
+		if (count == 1 && (bytes[0] == B_LEFT_ARROW || bytes[0] == B_RIGHT_ARROW)) {
+			_Choose((fSelected + (bytes[0] == B_RIGHT_ARROW ? 1 : kPaletteSize - 1))
+				% kPaletteSize);
+			return;
+		}
+		BView::KeyDown(bytes, count);
 	}
 
 	void SetSelected(int32 index)
@@ -118,6 +137,14 @@ public:
 	}
 
 private:
+	void _Choose(int32 index)
+	{
+		SetSelected(index);
+		BMessage message(kMsgColor);
+		message.AddInt32("index", index);
+		Window()->PostMessage(&message, Window());
+	}
+
 	BPoint _Center(int32 index) const
 	{
 		return BPoint(2 + fCell * index + fCell / 2, 2 + fCell / 2);
@@ -154,11 +181,13 @@ EditorWindow::EditorWindow(BBitmap* bitmap, const Settings& settings)
 	_BuildToolBar();
 	fStatus = new BStringView("status", "");
 	fStatus->SetExplicitMinSize(BSize(200, B_SIZE_UNSET));
+	fStatus->SetTruncation(B_TRUNCATE_END);
 	BScrollView* scroll = new BScrollView("scroll", fCanvas, 0, true, true, B_NO_BORDER);
 
 	BLayoutBuilder::Group<>(this, B_VERTICAL, 0)
 		.Add(fMenuBar)
 		.Add(fToolBar)
+		.Add(fStyleBar)
 		.Add(scroll)
 		.AddGroup(B_HORIZONTAL, 0)
 			.SetInsets(B_USE_SMALL_INSETS, 2, B_USE_SMALL_INSETS, 2)
@@ -263,10 +292,12 @@ void EditorWindow::_BuildToolBar()
 		AddIconAction(fToolBar, kMsgToolBase + i, this, icon, tip.String(), NULL, true);
 		delete icon;
 	}
-	fToolBar->AddSeparator();
-
+	// Keep style controls on a separate row so the editor fits smaller screens.
+	fStyleBar = new BPrivate::BToolBar(B_HORIZONTAL);
+	fStyleBar->AddView(new BStringView("colorLabel", "Color:"));
 	fSwatches = new ColorSwatchView(fColorIndex);
-	fToolBar->AddView(fSwatches);
+	fStyleBar->AddView(fSwatches);
+	fStyleBar->AddSeparator();
 
 	BPopUpMenu* widthMenu = new BPopUpMenu("width");
 	widthMenu->SetRadioMode(true);
@@ -281,7 +312,8 @@ void EditorWindow::_BuildToolBar()
 	if (widthMenu->FindMarked() == NULL)
 		widthMenu->ItemAt(1)->SetMarked(true);
 	fWidthField = new BMenuField("widthField", "Width:", widthMenu);
-	fToolBar->AddView(fWidthField);
+	fWidthField->SetExplicitMaxSize(fWidthField->PreferredSize());
+	fStyleBar->AddView(fWidthField);
 
 	BPopUpMenu* fontMenu = new BPopUpMenu("font");
 	fontMenu->SetRadioMode(true);
@@ -297,7 +329,9 @@ void EditorWindow::_BuildToolBar()
 	if (fontMenu->FindMarked() == NULL)
 		fontMenu->ItemAt(2)->SetMarked(true);
 	fFontField = new BMenuField("fontField", "Text:", fontMenu);
-	fToolBar->AddView(fFontField);
+	fFontField->SetExplicitMaxSize(fFontField->PreferredSize());
+	fStyleBar->AddView(fFontField);
+	fStyleBar->AddGlue();
 
 	fToolBar->AddGlue();
 	BBitmap* icon = MakeActionIcon(kIconUndo, iconSize);

@@ -81,14 +81,14 @@ SettingsWindow::SettingsWindow(const Settings& settings)
 	hint->SetHighUIColor(B_PANEL_TEXT_COLOR, B_DISABLED_LABEL_TINT);
 
 	// A BBox sizes itself from its first child view, so each section's
-	// content is a container view with its own layout.
+	// content is a container view with its own layout. The box reserves space
+	// for its label. B_USE_* values are sentinels, not pixel measurements.
 	BBox* shortcuts = new BBox("shortcuts");
 	shortcuts->SetLabel("Keyboard shortcuts");
 	BGridView* shortcutsGrid = new BGridView(B_USE_DEFAULT_SPACING, B_USE_SMALL_SPACING);
 	shortcuts->AddChild(shortcutsGrid);
 	BLayoutBuilder::Grid<>(shortcutsGrid)
-		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING + 6, B_USE_DEFAULT_SPACING,
-			B_USE_DEFAULT_SPACING)
+		.SetInsets(B_USE_DEFAULT_SPACING)
 		.Add(new BStringView("l1", "Full screen:"), 0, 0)
 		.Add(fFullKey, 1, 0)
 		.Add(new BStringView("l2", "Window:"), 0, 1)
@@ -103,8 +103,7 @@ SettingsWindow::SettingsWindow(const Settings& settings)
 	BGroupView* captureGroup = new BGroupView(B_VERTICAL, B_USE_SMALL_SPACING);
 	capture->AddChild(captureGroup);
 	BLayoutBuilder::Group<>(captureGroup)
-		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING + 6, B_USE_DEFAULT_SPACING,
-			B_USE_DEFAULT_SPACING)
+		.SetInsets(B_USE_DEFAULT_SPACING)
 		.Add(fIncludeCursor)
 		.Add(fIncludeDecorations)
 		.Add(fAnimate)
@@ -118,8 +117,7 @@ SettingsWindow::SettingsWindow(const Settings& settings)
 	BGroupView* afterGroup = new BGroupView(B_VERTICAL, B_USE_SMALL_SPACING);
 	after->AddChild(afterGroup);
 	BLayoutBuilder::Group<>(afterGroup)
-		.SetInsets(B_USE_DEFAULT_SPACING, B_USE_DEFAULT_SPACING + 6, B_USE_DEFAULT_SPACING,
-			B_USE_DEFAULT_SPACING)
+		.SetInsets(B_USE_DEFAULT_SPACING)
 		.AddGroup(B_HORIZONTAL)
 			.Add(fAfter)
 			.AddGlue()
